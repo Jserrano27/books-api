@@ -7,11 +7,11 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
-	"github.com/jserrano27/bookStore/platform/books"
+	"github.com/jserrano27/bookStore/db"
 	"github.com/jserrano27/bookStore/server/responser"
 )
 
-func DeleteBook(store books.Deleter) http.HandlerFunc {
+func DeleteBook() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(chi.URLParam(r, "id"))
 		if err != nil {
@@ -23,7 +23,21 @@ func DeleteBook(store books.Deleter) http.HandlerFunc {
 			return
 		}
 
-		book, err := store.DeleteBook(id)
+		conn := db.Connect()
+		defer db.CloseConnection(conn)
+
+		book := db.GetOneBook(conn, id)
+
+		if err != nil {
+			errMsg := responser.NewErrorResponse(
+				http.StatusNotFound,
+				err.Error(),
+			)
+			render.Render(w, r, errMsg)
+			return
+		}
+
+		err = db.DeleteBook(conn, id)
 		if err != nil {
 			errMsg := responser.NewErrorResponse(
 				http.StatusNotFound,
